@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>OpenStreetMap</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <style>
+        body { margin: 0; padding: 0; }
+        #map { height: 100vh; width: 100vw; }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <script>
+        var map = L.map('map').setView([44.59, -80.91], 13);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19
+        }).addTo(map);
+
+        fetch('https://aufaitapparel-us.backendless.app/api/data/customerprojectposts')
+            .then(response => response.json())
+            .then(data => {
+                data.forEach(item => {
+                    if (item.CustomerLocation) {
+                        var coords = item.CustomerLocation.split(',');
+                        var lat = parseFloat(coords[1]);
+                        var lng = parseFloat(coords[0]);
+
+                        if (!isNaN(lat) && !isNaN(lng)) {
+                            L.marker([lat, lng]).addTo(map)
+                                .bindPopup(item.CustomerContactEmail || 'No description');
+                        }
+                    }
+                });
+            })
+            .catch(error => console.error('Error:', error));
+    </script>
+</body>
+</html>
