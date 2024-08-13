@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contractor Dashboard Map</title>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        #map {
+            height: 100vh;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <!-- Optional: Leaflet Geolocation -->
+    <script>
+        // Initialize the map
+        var map = L.map('map').setView([0, 0], 13);
+
+        // Add OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // Get user's current location
+        map.locate({setView: true, maxZoom: 16});
+
+        function onLocationFound(e) {
+            var radius = e.accuracy / 2;
+
+            L.marker(e.latlng).addTo(map)
+                .bindPopup("You are within " + radius + " meters from this point").openPopup();
+
+            L.circle(e.latlng, radius).addTo(map);
+        }
+
+        map.on('locationfound', onLocationFound);
+
+        // Handle location error
+        function onLocationError(e) {
+            alert(e.message);
+        }
+
+        map.on('locationerror', onLocationError);
+
+        // Function to add a pin
+        function addPin(lat, lng, description) {
+            L.marker([lat, lng]).addTo(map)
+                .bindPopup(description)
+                .openPopup();
+        }
+
+        // Simulate receiving data from Backendless and adding a pin
+        function fetchCustomerPosts() {
+            // Replace with your actual Backendless API call to fetch customer posts
+            fetch('https://aufaitapparel-us.backendless.app/api/data/CustomerProjectPost')
+                .then(response => response.json())
+                .then(data => {
+                    data.forEach(post => {
+                        addPin(post.lat, post.lng, post.description);
+                    });
+                })
+                .catch(error => console.error('Error fetching data:', error));
+        }
+
+        // Fetch customer posts periodically (every 10 seconds)
+        setInterval(fetchCustomerPosts, 10000);
+    </script>
+</body>
+</html>
