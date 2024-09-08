@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contractor Dashboard Map</title>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        #map {
+            height: 100vh;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        // Initialize the map
+        var map = L.map('map').setView([0, 0], 13);
+
+        // Add OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // Function to add an old pin (for the old functionality)
+        function addOldPin(lat, lng, popupContent) {
+            L.marker([lat, lng]).addTo(map)
+                .bindPopup(popupContent).openPopup();
+        }
+
+        // Function to add a new pin with urgency status
+        function addNewPin(lat, lng, popupContent, urgencyStatus) {
+            var marker = L.marker([lat, lng]).addTo(map);
+            marker.bindPopup(popupContent).openPopup();
+
+            // Change pin color based on urgency status
+            if (urgencyStatus === "urgent") {
+                marker.setIcon(L.icon({
+                    iconUrl: 'https://upload.wikimedia.org/wikipedia/commons/e/e8/Red_pin.svg',
+                    iconSize: [25, 41],  // size of the icon
+                    iconAnchor: [12, 41],  // point of the icon which will correspond to marker's location
+                    popupAnchor: [1, -34]  // point from which the popup should open relative to the iconAnchor
+                }));
+            } else {
+                marker.setIcon(L.icon({
+                    iconUrl: 'https://upload.wikimedia.org/wikipedia/commons/0/0c/Blue_pin.svg',
+                    iconSize: [25, 41],
+                    iconAnchor: [12, 41],
+                    popupAnchor: [1, -34]
+                }));
+            }
+        }
+
+        // Event listener for both old and new messages
+        window.addEventListener('message', function(event) {
+            const data = JSON.parse(event.data);
+
+            // Old functionality (if exists)
+            if (data.oldTitle) {
+                const oldTitle = data.oldTitle || "No old title provided";
+                const oldDescription = data.oldDescription || "No old description provided";
+                const oldEmail = data.oldEmail || "No old email provided";
+
+                var oldPopupContent = 
+                    "<strong>" + oldTitle + "</strong><br>" +
+                    oldDescription + "<br><br>" +
+                    "<a href='mailto:" + oldEmail + "'>Contact: " + oldEmail + "</a>";
+                
+                addOldPin(data.lat, data.lng, oldPopupContent);
+            }
+
+            // New functionality
+            if (data.newTitle) {
+                const newTitle = data.newTitle || "No new title provided";
+                const newDescription = data.newDescription || "No new description provided";
+                const newEmail = data.newEmail || "No new email provided";
+
+                var newPopupContent = 
+                    "<strong>" + newTitle + "</strong><br>" +
+                    newDescription + "<br><br>" +
+                    "<a href='mailto:" + newEmail + "'>Contact: " + newEmail + "</a>";
+
+                addNewPin(data.lat, data.lng, newPopupContent, data.urgencyStatus);
+            }
+        });
+    </script>
+</body>
+</html>
