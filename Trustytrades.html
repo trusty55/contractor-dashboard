@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contractor Dashboard</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <style>
+        #map {
+            height: 100vh;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+<script>
+    var map = L.map('map').setView([51.505, -0.09], 13); // Initial map view, change as necessary
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    var markers = []; // Array to store all added markers
+
+    // Function to calculate the difference between two dates in days
+    function calculateDaysDifference(date1, date2) {
+        const timeDiff = Math.abs(date2 - date1);
+        const diffDays = Math.ceil(timeDiff / (1000 * 3600 * 24)); 
+        return diffDays;
+    }
+
+    // Function to add pins to the map
+    function addPins(posts) {
+        var today = new Date();
+
+        posts.forEach(post => {
+            // Parse the date from the post's created_at field
+            var postDate = new Date(post.created_at);
+            
+            // Calculate the difference between today's date and the post date
+            var daysSincePost = calculateDaysDifference(today, postDate);
+
+            // If the post is less than or equal to 3 days old, add it as a pin
+            if (daysSincePost <= 3) {
+                var marker = L.marker([post.lat, post.lng]).addTo(map);
+
+                // Create the popup content with title, description, and email
+                var popupContent = `
+                    <strong>${post.title}</strong><br>
+                    ${post.description}<br><br>
+                    <a href="mailto:${post.email}">Contact: ${post.email}</a>
+                `;
+
+                marker.bindPopup(popupContent);
+
+                // Add marker to the global markers array for potential later removal
+                markers.push(marker);
+            }
+        });
+    }
+
+    // Existing function to fetch posts and add pins (with 3-day logic)
+    function fetchPostsAndAddPins() {
+        // Fetch data from Backendless API (make sure you adjust this to your own API setup)
+        fetch('https://aufaitapparel-us.backendless.app/api/data/CustomerProjectPosts')
+            .then(response => response.json())
+            .then(posts => {
+                // Clear all existing pins
+                clearAllPins();
+
+                // Add fresh pins from the data
+                addPins(posts);
+            })
+            .catch(error => console.error('Error fetching posts:', error));
+    }
+
+    // Function to clear all the pins from the map
+    function clearAllPins() {
+        // Loop through markers array and remove each from the map
+        markers.forEach(function(marker) {
+            map.removeLayer(marker);
+        });
+        // Reset the markers array
+        markers = [];
+    }
+
+    // Listen for messages from the Web Viewer to add pins dynamically
+    window.addEventListener('message', function(event) {
+        var data = event.data;
+
+        if (data.action === 'addPin') {
+            var marker = L.marker([data.lat, data.lng]).addTo(map);
+            
+            var popupContent = `
+                <strong>${data.title}</strong><br>
+                ${data.description}<br><br>
+                <a href="mailto:${data.email}">Contact: ${data.email}</a>
+            `;
+
+            marker.bindPopup(popupContent);
+            markers.push(marker);
+        }
+    });
+
+    // Periodic function to remove old pins and refresh the map
+    setInterval(function() {
+        // Fetch the posts and refresh the pins
+        fetchPostsAndAddPins();
+    }, 86400000); // This runs once every 24 hours (86400000 ms)
+
+    // Initial load of pins when the map is loaded
+    fetchPostsAndAddPins();
+</script>
+
+</body>
+</html>
