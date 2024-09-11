@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contractor Dashboard</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <style>
+        #map {
+            height: 100vh;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+<script>
+    var map = L.map('map').setView([51.505, -0.09], 13); // Initial map view, change as necessary
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    var markers = {}; // Object to store markers by their IDs or created_at timestamps
+
+    // Function to calculate the difference between two dates in days
+    function calculateDaysDifference(date1, date2) {
+        const timeDiff = Math.abs(date2 - date1);
+        const diffDays = Math.ceil(timeDiff / (1000 * 3600 * 24)); 
+        return diffDays;
+    }
+
+    // Function to add pins to the map and schedule their removal after 3 days
+    function addPins(posts) {
+        var today = new Date();
+
+        posts.forEach(post => {
+            // Parse the date from the post's created_at field
+            var postDate = new Date(post.created_at);
+            
+            // Calculate the difference between today's date and the post date
+            var daysSincePost = calculateDaysDifference(today, postDate);
+
+            // Only add the pin if it is less than or equal to 3 days old
+            if (daysSincePost <= 3) {
+                var marker = L.marker([post.lat, post.lng]).addTo(map);
+
+                // Create the popup content with title, description, and email
+                var popupContent = `
+                    <strong>${post.title}</strong><br>
+                    ${post.description}<br><br>
+                    <a href="mailto:${post.email}">Contact: ${post.email}</a>
+                `;
+
+                marker.bindPopup(popupContent);
+
+                // Store marker in the global markers object with the post's ID or created_at timestamp
+                markers[post.created_at] = marker;
+
+                // Set a timeout to remove the marker after 3 days (3 days = 259200000 ms)
+                setTimeout(function() {
+                    removeMarker(post.created_at);
+                }, (3 - daysSincePost) * 86400000); // Adjust remaining time for older pins
+            }
+        });
+    }
+
+    // Function to remove a marker based on the post's created_at timestamp
+    function removeMarker(createdAt) {
+        var marker = markers[createdAt];
+        if (marker) {
+            map.removeLayer(marker);  // Remove the marker from the map
+            delete markers[createdAt]; // Remove the marker from the global markers object
+        }
+    }
+
+    // Existing function to fetch posts and add pins
+    function fetchPostsAndAddPins() {
+        // Fetch data from Backendless API (make sure you adjust this to your own API setup)
+        fetch('https://aufaitapparel-us.backendless.app/api/data/CustomerProjectPosts')
+            .then(response => response.json())
+            .then(posts => {
+                // Add fresh pins from the data
+                addPins(posts);
+            })
+            .catch(error => console.error('Error fetching posts:', error));
+    }
+
+    // Listen for messages from the Web Viewer to add pins dynamically
+    window.addEventListener('message', function(event) {
+        var data = event.data;
+
+        if (data.action === 'addPin') {
+            var marker = L.marker([data.lat, data.lng]).addTo(map);
+            
+            var popupContent = `
+                <strong>${data.title}</strong><br>
+                ${data.description}<br><br>
+                <a href="mailto:${data.email}">Contact: ${data.email}</a>
+            `;
+
+            marker.bindPopup(popupContent);
+            markers[data.created_at] = marker;
+
+            // Set a timeout to remove the marker after 3 days
+            setTimeout(function() {
+                removeMarker(data.created_at);
+            }, 3 * 86400000); // 3 days in milliseconds
+        }
+    });
+
+    // Initial load of pins when the map is loaded
+    fetchPostsAndAddPins();
+</script>
+
+</body>
+</html>
