@@ -103,5 +103,29 @@
         // Fetch customer posts periodically (every 10 seconds) - optional
         setInterval(fetchCustomerPosts, 10000);
     </script>
+    <script>
+    // Function to remove pins older than 3 days
+    function removeExpiredPins(pins) {
+        var currentDate = new Date(); // Get the current date and time
+        
+        // Loop through each pin in the list
+        pins.forEach(function(pin) {
+            var pinDate = new Date(pin.createdAt); // Get the date the pin was created
+            var timeDiff = currentDate - pinDate; // Calculate the difference in time
+            var daysDiff = timeDiff / (1000 * 3600 * 24); // Convert time difference to days
+            
+            // If the pin is older than 3 days, remove it
+            if (daysDiff > 3) {
+                removePin(pin.id); // This function will remove the pin from the map
+            }
+        });
+    }
+
+    // This listens for a message sent from the Thunkable app
+    window.addEventListener('message', function(event) {
+        var pins = JSON.parse(event.data).pins; // This gets the pins from the event message
+        removeExpiredPins(pins); // Call the function to check if any pins are expired
+    });
+</script>
 </body>
 </html>
