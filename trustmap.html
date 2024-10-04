@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contractor Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <style>
+        #map {
+            height: 100vh;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    
+    <script>
+        // Initialize the map and set the view to user's current location
+        let map = L.map('map').fitWorld();
+
+        // Request the user's location
+        map.locate({setView: true, maxZoom: 16});
+
+        // When user's location is found, set the map view
+        function onLocationFound(e) {
+            let radius = e.accuracy / 2;
+
+            // Add a circle representing the user's location
+            L.circle(e.latlng, radius).addTo(map)
+                .bindPopup("You are within " + radius + " meters from this point").openPopup();
+        }
+
+        map.on('locationfound', onLocationFound);
+
+        // Handle location error
+        function onLocationError(e) {
+            alert(e.message);
+        }
+
+        map.on('locationerror', onLocationError);
+
+        // Set up OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        // Function to add markers on the map
+        function addPin(lat, lng, title, description, email, postDate) {
+            let marker = L.marker([lat, lng]).addTo(map);
+            marker.bindPopup(`<b>${title}</b><br>${description}<br>Email: ${email}`);
+
+            // Check if the post is older than 3 days and remove it if so
+            let currentDate = new Date();
+            let postDateObj = new Date(postDate);
+            let timeDiff = currentDate - postDateObj;
+            let daysDiff = timeDiff / (1000 * 3600 * 24);
+
+            if (daysDiff > 3) {
+                map.removeLayer(marker);
+            }
+        }
+
+        // Fetch data from Thunkable Web Viewer via PostMessage
+        window.addEventListener('message', function(event) {
+            let jsonData = JSON.parse(event.data);
+            jsonData.forEach(post => {
+                addPin(post.lat, post.lng, post.title, post.description, post.email, post.postDate);
+            });
+        });
+    </script>
+</body>
+</html>
